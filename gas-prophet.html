@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gas Prophet | Smart EVM Transaction Timing</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; background-color: #050505; color: #00ff00; text-align: center; padding: 40px 20px; margin: 0; }
+        h1 { color: #00ff00; text-transform: uppercase; letter-spacing: 2px; }
+        p.subtitle { color: #aaaaaa; margin-bottom: 40px; }
+        .box { background: #111; padding: 30px; border-radius: 8px; display: inline-block; border: 1px solid #333; box-shadow: 0 0 15px rgba(0, 255, 0, 0.1); width: 100%; max-width: 600px; }
+        .gas-display { font-size: 4em; font-weight: bold; margin: 20px 0; text-shadow: 0 0 10px rgba(0,255,0,0.5); }
+        .recommendation { font-size: 1.2em; padding: 15px; border-radius: 5px; margin-top: 20px; font-weight: bold; }
+        .rec-good { background-color: rgba(0, 255, 0, 0.1); border: 1px solid #00ff00; color: #00ff00; }
+        .rec-bad { background-color: rgba(255, 0, 0, 0.1); border: 1px solid #ff0000; color: #ff0000; }
+        .rec-mid { background-color: rgba(255, 165, 0, 0.1); border: 1px solid #ffa500; color: #ffa500; }
+        .action-list { text-align: left; margin-top: 30px; color: #ccc; }
+        .action-list li { margin-bottom: 10px; }
+        button { background-color: #00ff00; color: #000; padding: 10px 20px; font-size: 16px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; margin-top: 20px; }
+        button:hover { background-color: #00cc00; }
+        .tip-box { border-top: 1px dashed #333; margin-top: 40px; padding-top: 20px; font-size: 0.9em; color: #666; }
+        .tip-box span { color: #00ff00; }
+    </style>
+</head>
+<body>
+    <h1>🔮 Web3 Gas Prophet</h1>
+    <p class="subtitle">AI-Assisted Ethereum Mempool Tracker. Stop overpaying for gas.</p>
+    
+    <div class="box">
+        <h2 style="margin:0; color:#fff;">Current Base Fee</h2>
+        <div class="gas-display" id="gas-gwei">-- Gwei</div>
+        
+        <div id="recommendation-box" class="recommendation" style="display:none;"></div>
+        
+        <div class="action-list">
+            <h3>Prophet's Action Guide:</h3>
+            <ul>
+                <li>💸 <b>DEX Swaps (Uniswap):</b> <span id="swap-cost">--</span> USD</li>
+                <li>🌉 <b>Bridging (Arbitrum/Opt):</b> <span id="bridge-cost">--</span> USD</li>
+                <li>🖼️ <b>NFT Minting:</b> <span id="nft-cost">--</span> USD</li>
+            </ul>
+        </div>
+        
+        <button onclick="fetchGas()">Scan Mempool Now</button>
+    </div>
+
+    <div class="tip-box">
+        Built by AdrianDev_Pro. If this oracle saved you gas money, drop a tip:<br>
+        <span>LTC: ltc1q82zr48l4sy2w5hax5hu0cdcxa5x0ak3a83xfle</span>
+    </div>
+
+    <script>
+        async function fetchGas() {
+            const gasDisplay = document.getElementById('gas-gwei');
+            const recBox = document.getElementById('recommendation-box');
+            
+            gasDisplay.innerHTML = "Scanning...";
+            
+            try {
+                // Fallback to public etherscan-like APIs or general gas oracles
+                // Using Owlracle API (Free tier, no key required for basic) or generic EthGasStation math
+                // For this pure client-side demo, we use a public proxy or beaconcha.in
+                const response = await fetch('https://beaconcha.in/api/v1/execution/gasnow');
+                const data = await response.json();
+                
+                const standardGas = Math.round(data.data.standard / 1e9); // Convert Wei to Gwei
+                const ethPrice = data.data.priceUSD;
+
+                gasDisplay.innerHTML = standardGas + " Gwei";
+
+                // Calculate estimated USD costs (Standard Gas Limit constants)
+                const gweiToUsd = (gas, limit) => ((gas * limit) / 1e9) * ethPrice;
+                
+                document.getElementById('swap-cost').innerText = "$" + gweiToUsd(standardGas, 150000).toFixed(2);
+                document.getElementById('bridge-cost').innerText = "$" + gweiToUsd(standardGas, 200000).toFixed(2);
+                document.getElementById('nft-cost').innerText = "$" + gweiToUsd(standardGas, 250000).toFixed(2);
+
+                recBox.style.display = "block";
+                recBox.className = "recommendation"; // Reset
+                
+                if (standardGas < 15) {
+                    recBox.classList.add("rec-good");
+                    recBox.innerHTML = "🟢 PROPHECY: EXCELLENT TIME TO TRANSACT.<br><small>Mempool is quiet. Do your heavy smart contract deployments and bridging now.</small>";
+                } else if (standardGas >= 15 && standardGas < 40) {
+                    recBox.classList.add("rec-mid");
+                    recBox.innerHTML = "🟡 PROPHECY: AVERAGE CONGESTION.<br><small>Normal transfers and simple DEX swaps are fine. Delay NFT mints if possible.</small>";
+                } else {
+                    recBox.classList.add("rec-bad");
+                    recBox.innerHTML = "🔴 PROPHECY: DO NOT TRANSACT.<br><small>High network stress detected. You will bleed money. Wait for the weekend.</small>";
+                }
+
+            } catch (e) {
+                gasDisplay.innerHTML = "ERR";
+                alert("Failed to connect to Mempool Oracles. Network might be blocked.");
+            }
+        }
+        // Auto-fetch on load
+        fetchGas();
+    </script>
+</body>
+</html>
