@@ -1,0 +1,68 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Vanity Address Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; background-color: #0d1117; color: #c9d1d9; text-align: center; padding: 50px; }
+        input, button { padding: 10px; margin: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #30363d; background: #161b22; color: #fff; }
+        button { background-color: #238636; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #2ea043; }
+        .box { background: #161b22; padding: 20px; border-radius: 10px; display: inline-block; border: 1px solid #30363d; margin-top: 20px; }
+        .tip-box { background: #1f2428; padding: 15px; border-radius: 5px; margin-top: 40px; border: 1px dashed #f1c40f; color: #f1c40f; }
+        #result { margin-top: 20px; font-weight: bold; color: #58a6ff; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Fast Web3 Vanity Address Generator</h1>
+    <p>Generate Ethereum/EVM addresses that start with your desired prefix! (Runs securely in your browser)</p>
+    
+    <div class="box">
+        <input type="text" id="prefix" placeholder="Enter prefix (e.g. 123, abc)" maxlength="4">
+        <br>
+        <button onclick="generateVanity()">Generate Wallet</button>
+        <p id="status"></p>
+        <div id="result"></div>
+    </div>
+
+    <div class="tip-box">
+        <h3>💡 Supported this tool? Drop a tip!</h3>
+        <p>Built by <b>AdrianDev_Pro</b> for the Web3 Community.</p>
+        <p><b>LTC Tip Address:</b> ltc1q82zr48l4sy2w5hax5hu0cdcxa5x0ak3a83xfle</p>
+    </div>
+
+    <script>
+        async function generateVanity() {
+            const prefix = document.getElementById('prefix').value.toLowerCase();
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+            
+            if(!prefix.match(/^[0-9a-f]+$/)) {
+                status.innerText = "Error: Use only Hex characters (0-9, a-f)";
+                return;
+            }
+            
+            status.innerText = "Generating... (This may take a while depending on prefix length)";
+            result.innerHTML = "";
+            
+            // Non-blocking loop
+            setTimeout(() => {
+                let wallet;
+                let address = "";
+                let attempts = 0;
+                while (!address.toLowerCase().startsWith("0x" + prefix)) {
+                    wallet = ethers.Wallet.createRandom();
+                    address = wallet.address;
+                    attempts++;
+                    if(attempts % 1000 === 0) console.log(attempts); // Keep thread alive
+                }
+                status.innerText = `Success! Found in ${attempts} attempts.`;
+                result.innerHTML = `<b>Address:</b> ${address}<br><br><b>Private Key:</b> ${wallet.privateKey}<br><br><small style="color:red;">Save your private key NOW. It is not stored anywhere.</small>`;
+            }, 100);
+        }
+    </script>
+</body>
+</html>
