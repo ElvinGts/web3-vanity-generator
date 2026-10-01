@@ -4,102 +4,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Zakat Calculator | Smart On-Chain Tracker</title>
+    <title>Web3 Zakat Calculator V2 | Multi-Chain Tracker</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #f8fafc; text-align: center; padding: 40px 20px; margin: 0; }
         h1 { color: #10b981; margin-bottom: 5px; }
         p.subtitle { color: #94a3b8; font-size: 1.1em; margin-bottom: 30px; }
-        .box { background: #1e293b; padding: 30px; border-radius: 12px; display: inline-block; border: 1px solid #334155; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); width: 100%; max-width: 500px; }
-        input, button { padding: 12px; margin: 10px 0; font-size: 16px; border-radius: 6px; border: 1px solid #475569; width: 90%; box-sizing: border-box; }
-        input { background: #0f172a; color: #fff; }
+        .box { background: #1e293b; padding: 30px; border-radius: 12px; display: inline-block; border: 1px solid #334155; margin-top: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); width: 100%; max-width: 550px; }
+        select, input, button { padding: 12px; margin: 10px 0; font-size: 16px; border-radius: 6px; border: 1px solid #475569; width: 90%; box-sizing: border-box; }
+        select, input { background: #0f172a; color: #fff; }
         button { background-color: #10b981; color: white; cursor: pointer; font-weight: bold; border: none; transition: background 0.3s; }
         button:hover { background-color: #059669; }
         .result { margin-top: 25px; font-weight: bold; color: #f8fafc; text-align: left; padding: 20px; background: #0f172a; border-radius: 8px; border: 1px solid #334155; }
         .highlight { color: #38bdf8; font-size: 1.2em; }
         .zakat-amount { color: #10b981; font-size: 1.4em; }
         .tip-box { background: #334155; padding: 15px; border-radius: 8px; margin-top: 40px; border: 1px dashed #fbbf24; color: #fcd34d; font-size: 0.9em; }
-        .loading { color: #fbbf24; font-style: italic; }
+        .badge { background: #ef4444; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; vertical-align: top; margin-left: 5px; }
     </style>
 </head>
 <body>
-    <h1>Web3 Zakat Calculator</h1>
-    <p class="subtitle">Auto-calculate your Zakat al-Mal (2.5%) for Ethereum Holdings.</p>
+    <h1>Web3 Zakat Calculator <span class="badge">V2.0</span></h1>
+    <p class="subtitle">Multi-Chain Auto-tracker for Islamic Wealth Tax (2.5%)</p>
     
     <div class="box">
-        <label for="wallet" style="display:block; text-align:left; padding-left:5%; margin-bottom:5px;">Enter ETH Wallet Address:</label>
+        <label for="network" style="display:block; text-align:left; padding-left:5%; margin-bottom:5px;">1. Select Blockchain Network:</label>
+        <select id="network">
+            <option value="ETH">Ethereum (ETH)</option>
+            <option value="BSC">Binance Smart Chain (BNB)</option>
+            <option value="ARB">Arbitrum (ETH)</option>
+            <option value="POLY">Polygon (MATIC)</option>
+        </select>
+
+        <label for="wallet" style="display:block; text-align:left; padding-left:5%; margin-top:15px; margin-bottom:5px;">2. Enter EVM Wallet Address:</label>
         <input type="text" id="wallet" placeholder="0x..." maxlength="42">
         <br>
-        <button onclick="calculateZakat()">Check Balance & Calculate Zakat</button>
-        <p id="status"></p>
+        <button onclick="calculateZakat()">Scan Chain & Calculate Zakat</button>
+        <p id="status" style="color:#fbbf24; font-style:italic;"></p>
         <div id="result" class="result" style="display:none;"></div>
     </div>
 
     <div class="tip-box">
         <p>Built with ❤️ by <b>AdrianDev_Pro</b>.</p>
-        <p>If this tool helped you fulfill your obligations, consider supporting the developer:</p>
-        <p><b>LTC Tip:</b> ltc1q82zr48l4sy2w5hax5hu0cdcxa5x0ak3a83xfle</p>
+        <p>Support the developer (LTC):<br><b>ltc1q82zr48l4sy2w5hax5hu0cdcxa5x0ak3a83xfle</b></p>
     </div>
 
     <script>
-        const NISAB_USD = 6500; // Approx 85g of Gold in USD. (Can be updated dynamically in v2)
+        const NISAB_USD = 6500; 
+        
+        const NETWORKS = {
+            "ETH": { rpc: "https://cloudflare-eth.com", cgId: "ethereum", symbol: "ETH" },
+            "BSC": { rpc: "https://bsc-dataseed.binance.org/", cgId: "binancecoin", symbol: "BNB" },
+            "ARB": { rpc: "https://arb1.arbitrum.io/rpc", cgId: "ethereum", symbol: "ETH" },
+            "POLY": { rpc: "https://polygon-rpc.com", cgId: "matic-network", symbol: "MATIC" }
+        };
 
         async function calculateZakat() {
             const wallet = document.getElementById('wallet').value;
+            const netKey = document.getElementById('network').value;
             const status = document.getElementById('status');
             const resultBox = document.getElementById('result');
             
             if(!wallet.match(/^0x[a-fA-F0-9]{40}$/)) {
-                status.innerHTML = "<span style='color:#ef4444;'>Error: Invalid Ethereum Address.</span>";
+                status.innerHTML = "<span style='color:#ef4444;'>Error: Invalid EVM Address.</span>";
                 return;
             }
             
-            status.innerHTML = "<span class='loading'>Connecting to Blockchain & Fetching Oracle Prices...</span>";
+            status.innerHTML = "Connecting to " + netKey + " RPC & Oracles...";
             resultBox.style.display = "none";
             
             try {
-                // 1. Fetch ETH Price from CoinGecko
-                const cgResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
-                const cgData = await cgResponse.json();
-                const ethPrice = cgData.ethereum.usd;
+                const network = NETWORKS[netKey];
 
-                // 2. Fetch ETH Balance using Cloudflare Public RPC
-                const provider = new ethers.providers.JsonRpcProvider('https://cloudflare-eth.com');
+                // 1. Fetch Token Price
+                const cgResponse = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${network.cgId}&vs_currencies=usd`);
+                const cgData = await cgResponse.json();
+                const tokenPrice = cgData[network.cgId].usd;
+
+                // 2. Fetch Balance via RPC
+                const provider = new ethers.providers.JsonRpcProvider(network.rpc);
                 const balanceWei = await provider.getBalance(wallet);
-                const balanceEth = ethers.utils.formatEther(balanceWei);
-                const balanceUsd = parseFloat(balanceEth) * ethPrice;
+                const balanceNative = ethers.utils.formatEther(balanceWei);
+                const balanceUsd = parseFloat(balanceNative) * tokenPrice;
 
                 // 3. Calculate Zakat
                 const zakatUsd = balanceUsd * 0.025;
-                const zakatEth = zakatUsd / ethPrice;
+                const zakatNative = zakatUsd / tokenPrice;
                 
                 let zakatStatusHtml = "";
                 if (balanceUsd >= NISAB_USD) {
                     zakatStatusHtml = `
-                        Status: <b>Eligible for Zakat (Exceeds Nisab)</b><br><br>
+                        Status: <b style="color:#10b981;">Eligible for Zakat (Exceeds Nisab)</b><br><br>
                         Zakat Owed (2.5%):<br>
-                        <span class='zakat-amount'>${zakatEth.toFixed(4)} ETH</span> (~$${zakatUsd.toFixed(2)} USD)
+                        <span class='zakat-amount'>${zakatNative.toFixed(4)} ${network.symbol}</span> (~$${zakatUsd.toFixed(2)} USD)
                     `;
                 } else {
-                    zakatStatusHtml = `Status: <b style='color:#fbbf24;'>Below Nisab ($${NISAB_USD}). No Zakat due.</b>`;
+                    zakatStatusHtml = `Status: <b style='color:#fbbf24;'>Below Nisab ($${NISAB_USD}). No Zakat due yet.</b>`;
                 }
 
-                // Display Results
                 status.innerHTML = "";
                 resultBox.style.display = "block";
                 resultBox.innerHTML = `
-                    Wallet: <span style='font-family:monospace; font-size:0.9em;'>${wallet.substring(0,8)}...${wallet.substring(36)}</span><br><br>
-                    Holdings: <span class='highlight'>${parseFloat(balanceEth).toFixed(4)} ETH</span><br>
+                    Network: <b>${netKey}</b><br>
+                    Holdings: <span class='highlight'>${parseFloat(balanceNative).toFixed(4)} ${network.symbol}</span><br>
                     Value: ~$${balanceUsd.toFixed(2)} USD<br><br>
-                    Current ETH Price: $${ethPrice}<br>
-                    Current Nisab Threshold: $${NISAB_USD}<br>
+                    ${network.symbol} Price: $${tokenPrice}<br>
+                    Nisab Threshold: $${NISAB_USD}<br>
                     <hr style='border:1px solid #334155;'>
                     ${zakatStatusHtml}
-                    <br><br><small style='color:#94a3b8;'>*Assuming holdings have met the 1-year Hawl condition.</small>
                 `;
-
             } catch (error) {
-                status.innerHTML = "<span style='color:#ef4444;'>Error connecting to network. Please try again later.</span>";
+                status.innerHTML = "<span style='color:#ef4444;'>Error connecting to network RPC. Try again.</span>";
                 console.error(error);
             }
         }
